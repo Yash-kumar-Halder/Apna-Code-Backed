@@ -37,5 +37,38 @@ export const getUserFiles = async (req, res) => {
     }
 };
 
+export const deleteNode = async (req, res) => {
+    try {
+        const nodeId = req.params.id;
+        const userId = req.user.id; // Ensure the user owns the node
+
+        const node = await Node.findOne({ _id: nodeId, userId });
+
+        if (!node) {
+            return res
+                .status(404)
+                .json({ message: "Node not found or unauthorized" });
+        }
+
+        // Recursive function to delete node and its children
+        const deleteRecursively = async (id) => {
+            const children = await Node.find({ parentId: id, userId });
+
+            for (const child of children) {
+                await deleteRecursively(child._id);
+            }
+
+            await Node.findByIdAndDelete(id);
+        };
+
+        await deleteRecursively(nodeId);
+
+        res.status(200).json({ message: `${node.type} deleted successfully` });
+    } catch (error) {
+        console.error("Error deleting node:", error);
+        res.status(500).json({ message: "Error deleting node", error });
+    }
+};
+
 
 
